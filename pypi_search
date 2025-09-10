@@ -1,0 +1,137 @@
+#!/usr/bin/env python3
+"""
+Reliable PyPI package search using official APIs
+"""
+import requests
+import sys
+import json
+from urllib.parse import quote
+import argparse
+from typing import List, Dict, Any
+
+def search_exact_match(package_name: str) -> Dict[str, Any]:
+    """Search for exact package match using PyPI JSON API"""
+    try:
+        url = f"https://pypi.org/pypi/{package_name}/json"
+        response = requests.get(url, timeout=10)
+        if response.status_code == 200:
+            return response.json()
+        return None
+    except requests.RequestException:
+        return None
+
+def search_similar_packages(query: str, limit: int = None) -> List[str]:
+    """Search for packages with similar names using PyPI simple index"""
+    try:
+        response = requests.get("https://pypi.org/simple/", timeout=15)
+        if response.status_code == 200:
+            # Extract package names that contain the query
+            content = response.text.lower()
+            query_lower = query.lower()
+
+            # Simple parsing to find package names containing the query
+            import re
+            pattern = r'href="([^"]*' + re.escape(query_lower) + r'[^"]*)"'
+            matches = re.findall(pattern, content)
+
+            # Clean up the matches to get package names
+            packages = []
+            for match in matches:
+                package_name = match.rstrip('/').split('/')[-1]
+                if package_name and query_lower in package_name.lower():
+                    packages.append(package_name)
+
+            unique_packages = list(set(packages))
+
+            # Apply limit if specified
+            if limit is not None:
+                return unique_packages[:limit]
+            return unique_packages
+    except requests.RequestException:
+        pass
+    return []
+
+def display_package_info(package_data: Dict[str, Any]):
+    """Display formatted package information"""
+    info = package_data['info']
+
+    print(f"\n📦 {info['name']}")
+    print(f"   Version: {info['version']}")
+    print(f"   Summary: {info.get('summary', 'No summary available')}")
+    print(f"   Author: {info.get('author', 'Unknown')}")
+    print(f"   License: {info.get('license', 'Not specified')}")
+
+    if info.get('home_page'):
+        print(f"   Homepage: {info['home_page']}")
+
+    if info.get('project_urls'):
+        for url_type, url in info['project_urls'].items():
+            if url_type.lower() in ['repository', 'github', 'source']:
+                print(f"   {url_type}: {url}")
+
+    # Show install command
+    print(f"   Install: pip install {info['name']}")
+    print("-" * 60)
+
+def main():
+    parser = argparse.ArgumentParser(description='Search PyPI packages')
+    parser.add_argument('query', help='Package name or search term')
+    parser.add_argument('-v', '--verbose', action='store_true', help='Show more details')
+    parser.add_argument('-l', '--limit', type=int, default=10, help='Maximum number of results to show (default: 10, use 0 for no limit)')
+
+    args = parser.parse_args()
+    query = args.query.strip()
+
+    if not query:
+        print("Please provide a search term")
+        return 1
+
+    print(f"🔍 Searching for packages related to: {query}")
+
+    # Try exact match first
+    exact_match = search_exact_match(query)
+    if exact_match:
+        print(f"\n✅ Exact match found:")
+        display_package_info(exact_match)
+
+    # Search for similar packages
+    # Handle limit: 0 means unlimited, otherwise use the specified limit
+    limit = None if args.limit == 0 else args.limit
+    similar_packages = search_similar_packages(query, limit)
+
+    if similar_packages:
+        # Get total count for display purposes only when we have a limit
+        if limit is not None:
+            total_packages = search_similar_packages(query, None)
+            total_found = len(total_packages)
+            showing = len(similar_packages)
+
+            if total_found > showing:
+                print(f"\n📋 Showing {showing} of {total_found} packages containing '{query}' (use -l 0 for all results):")
+            else:
+                print(f"\n📋 Packages containing '{query}' ({len(similar_packages)} found):")
+        else:
+            print(f"\n📋 Packages containing '{query}' ({len(similar_packages)} found):")
+
+        for i, package_name in enumerate(similar_packages, 1):
+            if package_name.lower() != query.lower():  # Don't repeat exact match
+                package_info = search_exact_match(package_name)
+                if package_info:
+                    print(f"\n{i}. {package_name}")
+                    info = package_info['info']
+                    print(f"   Summary: {info.get('summary', 'No summary available')}")
+                    print(f"   Version: {info['version']}")
+                    print(f"   Install: pip install {package_name}")
+                else:
+                    print(f"\n{i}. {package_name} (details not available)")
+
+    if not exact_match and not similar_packages:
+        print(f"\n❌ No packages found matching '{query}'")
+        print(f"\n💡 Try searching on PyPI web interface:")
+        print(f"   https://pypi.org/search/?q={quote(query)}")
+
+    return 0
+
+if __name__ == "__main__":
+    sys.exit(main())
+
