@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """
 Reliable PyPI package search combining original logic with rich display.
+This version guarantees a uniform width for the exact match panel and the
+similar packages table by manually calculating the required width.
 """
 import requests
 import sys
@@ -12,6 +14,7 @@ import re
 from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
+from rich import box
 
 def search_exact_match(package_name: str) -> Dict[str, Any]:
     """Search for exact package match using PyPI JSON API"""
@@ -36,13 +39,11 @@ def search_similar_packages(query: str) -> List[str]:
             content = response.text.lower()
             query_lower = query.lower()
 
-            # This regex is specifically for the PyPI simple index format
             pattern = r'<a href="[^"]*">' + re.escape(query_lower) + r'[^"]*</a>'
             matches = re.findall(pattern, content)
 
             packages = []
             for match in matches:
-                # Extract the package name from the link
                 package_name = match.split('>')[-2].split('<')[0]
                 packages.append(package_name)
 
@@ -51,25 +52,6 @@ def search_similar_packages(query: str) -> List[str]:
     except requests.RequestException:
         pass
     return []
-
-def display_package_info(package_data: Dict[str, Any], console: Console):
-    """Display formatted package information in a rich Panel."""
-    info = package_data['info']
-
-    panel_content = (
-        f"[bold cyan]Version:[/bold cyan] {info.get('version', 'N/A')}\n"
-        f"[bold yellow]Summary:[/bold yellow] {info.get('summary', 'No summary available')}\n"
-        f"[bold green]Author:[/bold green] {info.get('author', 'Unknown')}\n"
-        f"[bold blue]License:[/bold blue] {info.get('license', 'Not specified')}\n"
-        f"[bold magenta]Homepage:[/bold magenta] {info.get('home_page', 'N/A')}\n"
-        f"[bold red]Install:[/bold red] pip install {info['name']}"
-    )
-
-    console.print(Panel(
-        panel_content,
-        title=f"📦 [bold]{info['name']}[/bold]",
-        border_style="bold green"
-    ))
 
 def main():
     parser = argparse.ArgumentParser(description='Search PyPI packages')
@@ -87,50 +69,106 @@ def main():
 
     console.print(f"🔍 [bold blue]Searching for packages related to: {query}[/bold blue]")
 
-    # 1. Try to find an exact match first
+    # 1. Fetch all data first
     exact_match = None
-    with console.status(f"[bold green]Checking for exact match...[/bold green]", spinner="dots"):
+    similar_packages_data = []
+
+    with console.status(f"[bold green]Fetching data...[/bold green]", spinner="dots"):
         exact_match = search_exact_match(query)
-
-    if exact_match:
-        console.print("\n✅ [bold green]Exact match found:[/bold green]")
-        display_package_info(exact_match, console)
-
-    # 2. Search for similar packages
-    similar_names = []
-    with console.status(f"[bold green]Searching for similar packages...[/bold green]", spinner="dots"):
         similar_names = search_similar_packages(query)
 
-    # Filter out the exact match to avoid duplication
-    if exact_match and exact_match['info']['name'] in similar_names:
-        similar_names.remove(exact_match['info']['name'])
+        # Filter out the exact match to avoid duplication
+        if exact_match and exact_match['info']['name'] in similar_names:
+            similar_names.remove(exact_match['info']['name'])
 
-    if similar_names:
-        if limit and len(similar_names) > limit:
-            console.print(f"\n📋 [bold]Showing {limit} of {len(similar_names)} similar packages (use -l 0 for all results):[/bold]")
-            similar_names = similar_names[:limit]
+        for name in similar_names[:limit]:
+            package_info = search_exact_match(name)
+            if package_info:
+                similar_packages_data.append(package_info)
+
+    # 2. Manually calculate the width of the table based on content
+    max_package_len = 0
+    max_version_len = 0
+    max_summary_len = 0
+
+    # Get max lengths from similar packages
+    for package in similar_packages_data:
+        info = package['info']
+        max_package_len = max(max_package_len, len(info.get('name', 'N/A')))
+        max_version_len = max(max_version_len, len(info.get('version', 'N/A')))
+        max_summary_len = max(max_summary_len, len(info.get('summary', '')))
+
+    # Get max lengths from the exact match
+    if exact_match:
+        info = exact_match['info']
+        max_package_len = max(max_package_len, len(info.get('name', 'N/A')))
+        max_version_len = max(max_version_len, len(info.get('version', 'N/A')))
+
+    # Add header lengths to the calculation
+    max_package_len = max(max_package_len, len("Package"))
+    max_version_len = max(max_version_len, len("Version"))
+    max_summary_len = max(max_summary_len, len("Summary"))
+
+    # Calculate the total width, including padding and borders
+    table_width = (
+        max_package_len + max_version_len +
+        min(max_summary_len, console.width - max_package_len - max_version_len - 10) +
+        6 # for padding and borders
+    )
+    # Ensure the width doesn't exceed the console width
+    total_width = min(table_width, console.width)
+
+    # 3. Display the exact match with the calculated width
+    if exact_match:
+        console.print("\n✅ [bold green]Exact match found:[/bold green]")
+
+        info = exact_match['info']
+        panel_content = (
+            f"[bold cyan]Version:[/bold cyan] {info.get('version', 'N/A')}\n"
+            f"[bold yellow]Summary:[/bold yellow] {info.get('summary', 'No summary available')}\n"
+            f"[bold green]Author:[/bold green] {info.get('author', 'Unknown')}\n"
+            f"[bold blue]License:[/bold blue] {info.get('license', 'Not specified')}\n"
+            f"[bold magenta]Homepage:[/bold magenta] {info.get('home_page', 'N/A')}\n"
+            f"[bold red]Install:[/bold red] pip install {info['name']}"
+        )
+
+        console.print(Panel(
+            panel_content,
+            title=f"📦 [bold]{info['name']}[/bold]",
+            border_style="bold green",
+            width=total_width,
+            box=box.ROUNDED
+        ))
+
+    # 4. Display the similar packages table
+    if similar_packages_data:
+        if limit and len(similar_packages_data) > limit:
+            console.print(f"\n📋 [bold]Showing {limit} of {len(similar_packages_data)} similar packages (use -l 0 for all results):[/bold]")
         else:
-            console.print(f"\n📋 [bold]Found {len(similar_names)} similar packages:[/bold]")
+            console.print(f"\n📋 [bold]Found {len(similar_packages_data)} similar packages:[/bold]")
 
-        table = Table(title=f"Similar Packages for '{query}'", show_header=True, header_style="bold magenta")
-        table.add_column("Package", style="bold green")
-        table.add_column("Version", style="cyan")
+        table = Table(
+            title=f"Similar Packages for '{query}'",
+            show_header=True,
+            header_style="bold magenta",
+            box=box.ROUNDED,
+            width=total_width
+        )
+        table.add_column("Package", style="bold green", width=max_package_len)
+        table.add_column("Version", style="cyan", width=max_version_len)
         table.add_column("Summary", style="yellow")
 
-        # Fetch details for similar packages
-        for name in similar_names:
-            package = search_exact_match(name)
-            if package:
-                info = package['info']
-                table.add_row(
-                    info.get('name', 'N/A'),
-                    info.get('version', 'N/A'),
-                    info.get('summary', 'No summary available')
-                )
+        for package in similar_packages_data:
+            info = package['info']
+            table.add_row(
+                info.get('name', 'N/A'),
+                info.get('version', 'N/A'),
+                info.get('summary', 'No summary available')
+            )
 
         console.print(table)
 
-    if not exact_match and not similar_names:
+    if not exact_match and not similar_packages_data:
         console.print(f"\n[bold red]❌ No packages found matching '{query}'[/bold red]")
         console.print(f"\n💡 Try searching on PyPI web interface: [link=https://pypi.org/search/?q={quote(query)}]https://pypi.org/search/?q={quote(query)}[/link]")
         sys.exit(1)
@@ -139,5 +177,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-
 
