@@ -1,41 +1,41 @@
-$ pypi_search beet -l 5
-🔍 Searching for packages related to: beet
+$ pypi_search beets -l 5
+🔍 Searching for packages related to: beets
 
 ✅ Exact match found:
 
-📦 beet
-   Version: 0.111.0
-   Summary: The Minecraft pack development kit
-   Author: Valentin Berlier
+📦 beets
+   Version: 2.3.1
+   Summary: music tagger and library organizer
+   Author: Adrian Sampson
    License: MIT
-   Homepage: https://github.com/mcbeet/beet
-   Repository: https://github.com/mcbeet/beet
-   Install: pip install beet
+   Homepage: https://beets.io/
+   Repository: https://github.com/beetbox/beets
+   Install: pip install beets
 ------------------------------------------------------------
 
-📋 Showing 5 of 104 packages containing 'beet' (use -l 0 for all results):
+📋 Showing 5 of 62 packages containing 'beets' (use -l 0 for all results):
 
-1. beets-bandcamp
-   Summary: Plugin for beets (http://beets.io) to use bandcamp as an autotagger source.
-   Version: 0.1.4
-   Install: pip install beets-bandcamp
+1. beets-alternatives
+   Summary: beets plugin to manage multiple files
+   Version: 0.13.3
+   Install: pip install beets-alternatives
 
-2. gaia-beet
-   Summary: Beet plugin to generate Minecraft worldgen files
-   Version: 0.5.1
-   Install: pip install gaia-beet
+2. beets-bbq
+   Summary: blackbird style search query plugin for beets
+   Version: 0.0.1
+   Install: pip install beets-bbq
 
-3. xbeetransmission
-   Summary: xbeetransmission is a python module is designed to reliably and securely send messages over Xbee modules in out-of-the-box configuration.
-   Version: 0.2.2
-   Install: pip install xbeetransmission
+3. beets-alias
+   Summary: Alias Plugin for Beets
+   Version: 1.0.1
+   Install: pip install beets-alias
 
-4. beetzbox
-   Summary: A Beets plugin to integrate it with the SqueezeBox eco-system
-   Version: 0.1.0.dev0
-   Install: pip install beetzbox
+4. beets-ydl
+   Summary: Download audio from youtube-dl soures and import into beets
+   Version: 0.0.4
+   Install: pip install beets-ydl
 
-5. beetrhythm
-   Summary: A beets plugin for the deeprhythm tempo predictor
-   Version: 0.1.3
-   Install: pip install beetrhythm
+5. beets-beatport4
+   Summary: Plugin for beets (http://beets.io) to replace stock beatport plugin which is not yet compatible with Beatport API v4.
+   Version: 0.3.4
+   Install: pip install beets-beatport4
