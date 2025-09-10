@@ -4,13 +4,13 @@ Reliable PyPI package search combining original logic with rich display.
 This version guarantees a uniform width for the exact match panel and the
 similar packages table by manually calculating the required width.
 """
-import requests
 import sys
-import json
+# import json
 from urllib.parse import quote
 import argparse
 from typing import List, Dict, Any
 import re
+import requests
 from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
@@ -177,4 +177,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
