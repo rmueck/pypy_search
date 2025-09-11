@@ -54,6 +54,7 @@ def search_similar_packages(query: str) -> List[str]:
     return []
 
 def main():
+    """Main function"""
     parser = argparse.ArgumentParser(description='Search PyPI packages')
     parser.add_argument('query', help='Package name or search term')
     parser.add_argument('-l', '--limit', type=int, default=10, help='Maximum number of similar results to show (default: 10, use 0 for no limit)')
