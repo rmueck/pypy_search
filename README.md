@@ -57,7 +57,7 @@ $ pypi_search beets -l 5
 ~~~
 
 
-## Example for pip_search-ng
+## Example for pip_search
 
 ![pip_search-ng](./screenshot-pip_search.png "pip_search")
 
