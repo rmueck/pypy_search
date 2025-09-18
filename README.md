@@ -59,5 +59,5 @@ $ pypi_search beets -l 5
 
 ## Example for pip_search-ng
 
-![pip_search-ng](./screenshot-pip_search-ng.png "pip_search-ng")
+![pip_search-ng](./screenshot-pip_search.png "pip_search")
 
